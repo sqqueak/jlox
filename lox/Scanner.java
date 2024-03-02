@@ -54,11 +54,60 @@ class Scanner {
       case '>':
         addToken(match('=') ? GREATER_EQUAL : GREATER);
         break;
+      case '/':
+        if(match('/')) {                                                        // Matched single line comment
+          while(peek() != '\n' && !isAtEnd()) advance();                        // Keep consuming until newlinen is reached
+        } else {
+          addToken(SLASH);
+        }
+        break;
+
+      case ' ':                                                                 // Ignoring whitespace characters
+      case '\r':
+      case '\t':
+        break;
+
+      case '\n':
+        line++;
+        break;
+
+      case '"': string(); break;
       
       default:
-        Lox.error(line, "Unexpected character.");                               // Reads invalid character but keeps scanning
+        if(isDigit(c)) {
+          number();                                                             // Matching an integer or decimal literal
+        } else {
+          Lox.error(line, "Unexpected character.");                             // Reads invalid character but keeps scanning
+        }
         break;
     }
+  }
+
+  private void number() {
+    while(isDigit(peek())) advance();                                           // Getting digits before the decimal point
+
+    if(peek() == '.' && isDigit(peekNext())) {
+      advance();                                                                // If there's a decimal point, consume it
+      while(isDigit(peek())) advance();                                         // Getting digits after the decimal point
+    }
+
+    addToken(NUMBER, Double.parseDouble(source.substring(start, current)));
+  }
+
+  private void string() {
+    while(peek() != '"' && !isAtEnd()) {                                        // Keep consuming characters that belong to the string literal
+      if(peek() == '\n') line++;                                                // Hitting newline inside a string (for multiline strings)
+      advance();
+    }
+
+    if(isAtEnd()) {
+      Lox.error(line, "Unterminated string.");                                  // Throws error if scanner reaches end of file before the string is terminated
+      return;
+    }
+
+    advance();                                                                  // Consume the ending "
+    String value = source.substring(start + 1, current - 1);                     // Get the string literal without the quotation marks on either side
+    addToken(STRING, value);
   }
 
   private boolean match(char expected) {
@@ -67,6 +116,20 @@ class Scanner {
 
     current++;                                                                  // Moving forward one more character if it matches
     return true;                                                                // The second character is now part of the token
+  }
+
+  private char peek() {
+    if(isAtEnd()) return '\0';
+    return source.charAt(current);                                              // Getting next character without consuming it
+  }
+
+  private char peekNext() {
+    if(current + 1 >= source.length()) return '\0';
+    return source.charAt(current + 1);                                          // Getting next next character without consuming it
+  }
+
+  private boolean isDigit(char c) {
+    return c >= '0' && c <= '9';
   }
 
   private boolean isAtEnd() {
