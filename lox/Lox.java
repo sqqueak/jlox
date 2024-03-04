@@ -60,4 +60,12 @@ public class Lox {
     System.err.println("[line " + line + "] Error" + where + ": " + message);   // Displaying where error was located
     hadError = true;
   }
+
+  static void error(Token token, String message) {
+    if(token.type == TokenType.EOF) {                                           // Tracks where error occurs based on token type
+      report(token.line, " at end", message);
+    } else {
+      report(token.line, " at '" + token.lexeme + "'", message);
+    }
+  }
 }
