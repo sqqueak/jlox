@@ -1,6 +1,15 @@
 package lox;
 
 class Interpreter implements Expr.Visitor<Object> {
+  void interpret(Expr expression) {
+    try {
+      Object value = evaluate(expression);
+      System.out.println(stringify(value));
+    } catch (RuntimeError error) {
+      Lox.runtimeError(error);
+    }
+  }
+
   @Override
   public Object visitLiteralExpr(Expr.Literal expr) {
     return expr.value;
@@ -49,13 +58,27 @@ class Interpreter implements Expr.Visitor<Object> {
     return a.equals(b);
   }
 
+  private String stringify(Object object) {
+    if(object == null) return "nil";
+
+    if(object instanceof Double) {
+      String text = object.toString();
+      if(text.endsWith(".0")) {
+        text = text.substring(0, text.length() - 2);                            // Removing the .0 from the end of a double
+      }
+      return text;
+    }
+
+    return object.toString();
+  }
+
   private Object evaluate(Expr expr) {
     return expr.accept(this);
   }
 
   @Override
   public Object visitBinaryExpr(Expr.Binary expr) {
-    Object left = evaluate(expr.left);
+    Object left = evaluate(expr.left);                                          // Evaluate both sides first
     Object right = evaluate(expr.right); 
 
     switch(expr.operator.type) {
