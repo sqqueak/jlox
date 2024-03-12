@@ -18,7 +18,7 @@ class Parser {
   List<Stmt> parse() {
     List<Stmt> statements = new ArrayList<>();
     while(!isAtEnd()) {
-      statements.add(statement());
+      statements.add(declaration());
     }
 
     return statements;
@@ -26,6 +26,16 @@ class Parser {
 
   private Expr expression() {                                                   // expression -> equality
     return equality();
+  }
+
+  private Stmt declaration() {
+    try {
+      if(match(VAR)) return varDeclaration();                                   // declaration -> varDecl | statement
+      return statement();
+    } catch (ParseError error) {
+      synchronize();
+      return null;
+    }
   }
 
   private Stmt statement() {                                                    // statement -> exprStmt | printStmt
@@ -38,6 +48,18 @@ class Parser {
     Expr value = expression();
     consume(SEMICOLON, "Expect ';' after value.");
     return new Stmt.Print(value);
+  }
+
+  private Stmt varDeclaration() {                                               // varDecl -> "var" IDENTIFIER ( "=" expression )? ";"
+    Token name = consume(IDENTIFIER, "Expect variable name.");
+
+    Expr initializer = null;
+    if(match(EQUAL)) {
+      initializer = expression();
+    }
+
+    consume(SEMICOLON, "Expect ';' after variable declaration.");
+    return new Stmt.Var(name, initializer);
   }
 
   private Stmt expressionStatement() {                                          // exprStmt -> expression ";"
@@ -105,15 +127,19 @@ class Parser {
   }
 
   private Expr primary() {                                                      // primary -> NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")"
-    if (match(FALSE)) return new Expr.Literal(false);                     // Terminals for states
-    if (match(TRUE)) return new Expr.Literal(true);
-    if (match(NIL)) return new Expr.Literal(null);
+    if(match(FALSE)) return new Expr.Literal(false);                            // Terminals for states
+    if(match(TRUE)) return new Expr.Literal(true);
+    if(match(NIL)) return new Expr.Literal(null);
 
     if (match(NUMBER, STRING)) {                                                // Terminals for literals
       return new Expr.Literal(previous().literal);
     }
 
-    if (match(LEFT_PAREN)) {                                                    // Grouping
+    if(match(IDENTIFIER)) {
+      return new Expr.Var(previous());
+    }
+
+    if(match(LEFT_PAREN)) {                                                     // Grouping
       Expr expr = expression();
       consume(RIGHT_PAREN, "Expect ')' after expression.");
       return new Expr.Grouping(expr);
