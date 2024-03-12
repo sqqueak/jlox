@@ -136,7 +136,7 @@ class Parser {
     }
 
     if(match(IDENTIFIER)) {
-      return new Expr.Var(previous());
+      return new Expr.Variable(previous());
     }
 
     if(match(LEFT_PAREN)) {                                                     // Grouping

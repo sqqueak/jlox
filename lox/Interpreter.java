@@ -3,6 +3,8 @@ package lox;
 import java.util.List;
 
 class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
+  private Environment environment = new Environment();
+
   void interpret(List<Stmt> statements) {
     try {
       for(Stmt statement : statements) {
@@ -14,13 +16,56 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   }
 
   @Override
-  public Object visitLiteralExpr(Expr.Literal expr) {
-    return expr.value;
+  public Object visitBinaryExpr(Expr.Binary expr) {
+    Object left = evaluate(expr.left);                                          // Evaluate both sides first
+    Object right = evaluate(expr.right); 
+
+    switch(expr.operator.type) {
+      case BANG_EQUAL: return !isEqual(left, right);
+      case EQUAL_EQUAL: return isEqual(left, right);
+      case GREATER:
+        checkNumberOperands(expr.operator, left, right);
+        return (double)left > (double)right;
+      case GREATER_EQUAL:
+        checkNumberOperands(expr.operator, left, right);
+        return (double)left >= (double)right;
+      case LESS:
+        checkNumberOperands(expr.operator, left, right);
+        return (double)left < (double)right;
+      case LESS_EQUAL:
+        checkNumberOperands(expr.operator, left, right);
+        return (double)left <= (double)right;
+      case MINUS:
+        checkNumberOperands(expr.operator, left, right);
+        return (double)left - (double)right;
+      case PLUS:
+        if(left instanceof Double && right instanceof Double) {
+          return (double)left + (double)right;
+        } 
+        if(left instanceof String && right instanceof String) {
+          return (String)left + (String)right;
+        }
+        throw new RuntimeError(expr.operator, 
+          "Operands must be two numbers or two strings.");
+      case SLASH:
+        checkNumberOperands(expr.operator, left, right);
+        return (double)left / (double)right;
+      case STAR:
+        checkNumberOperands(expr.operator, left, right);
+        return (double)left * (double)right;
+    }
+
+    return null; // unreachable
   }
 
   @Override
   public Object visitGroupingExpr(Expr.Grouping expr) {
     return evaluate(expr.expression);
+  }
+
+  @Override
+  public Object visitLiteralExpr(Expr.Literal expr) {
+    return expr.value;
   }
 
   @Override
@@ -97,45 +142,18 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   }
 
   @Override
-  public Object visitBinaryExpr(Expr.Binary expr) {
-    Object left = evaluate(expr.left);                                          // Evaluate both sides first
-    Object right = evaluate(expr.right); 
-
-    switch(expr.operator.type) {
-      case BANG_EQUAL: return !isEqual(left, right);
-      case EQUAL_EQUAL: return isEqual(left, right);
-      case GREATER:
-        checkNumberOperands(expr.operator, left, right);
-        return (double)left > (double)right;
-      case GREATER_EQUAL:
-        checkNumberOperands(expr.operator, left, right);
-        return (double)left >= (double)right;
-      case LESS:
-        checkNumberOperands(expr.operator, left, right);
-        return (double)left < (double)right;
-      case LESS_EQUAL:
-        checkNumberOperands(expr.operator, left, right);
-        return (double)left <= (double)right;
-      case MINUS:
-        checkNumberOperands(expr.operator, left, right);
-        return (double)left - (double)right;
-      case PLUS:
-        if(left instanceof Double && right instanceof Double) {
-          return (double)left + (double)right;
-        } 
-        if(left instanceof String && right instanceof String) {
-          return (String)left + (String)right;
-        }
-        throw new RuntimeError(expr.operator, 
-          "Operands must be two numbers or two strings.");
-      case SLASH:
-        checkNumberOperands(expr.operator, left, right);
-        return (double)left / (double)right;
-      case STAR:
-        checkNumberOperands(expr.operator, left, right);
-        return (double)left * (double)right;
+  public Void visitVarStmt(Stmt.Var stmt) {
+    Object value = null;                                                        // Value of variable declaration is always null/nil unless specified
+    if(stmt.initializer != null) {
+      value = evaluate(stmt.initializer);                                       // Evaluate the variable with an initial value if it has one
     }
 
-    return null; // unreachable
+    environment.define(stmt.name.lexeme, value);
+    return null;
+  }
+
+  @Override
+  public Object visitVariableExpr(Expr.Variable expr) {
+    return environment.get(expr.name);
   }
 }
