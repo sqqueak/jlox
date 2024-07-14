@@ -40,6 +40,7 @@ class Parser {
 
   private Stmt statement() {                                                    // statement -> exprStmt | printStmt
     if(match(PRINT)) return printStatement();
+    if(match(LEFT_BRACE)) return new Stmt.Block(block());
 
     return expressionStatement();
   }
@@ -66,6 +67,24 @@ class Parser {
     Expr expr = expression();
     consume(SEMICOLON, "Expect ';' after value.");
     return new Stmt.Expression(expr);
+  }
+
+  private List<Stmt> block() {
+    // These are all the statements that are encompassed in this block.
+    List<Stmt> statements = new ArrayList<>();
+
+    // While we haven't reached the end of the block (denoted by the closing
+    // curly), keep adding each statement to the list of statements that lie in
+    // this block.
+    while(!check(RIGHT_BRACE) && !isAtEnd()) {
+      statements.add(declaration());
+    }
+
+    // If the last character isn't a closing curly, throw an error.
+    consume(RIGHT_BRACE, "Expect '}' after block.");
+
+    // Return list of statements in the block after successful parsing.
+    return statements;
   }
 
   private Expr assignment() {

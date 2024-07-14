@@ -128,6 +128,31 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     stmt.accept(this);
   }
 
+  void executeBlock(List<Stmt> statements, Environment environment) {
+    // Set the *next* environment's previous environment to be the current one.
+    Environment previous = this.environment;
+    try {
+      // Set the current environment to be the *new* one.
+      this.environment = environment;
+
+      // Execute all the statements in the current environment.
+      for(Stmt statement : statements) {
+        execute(statement);
+      }
+    } finally {
+      // Revert the environment stack by setting the previous one to the
+      // original previous environment, essentially popping the top-most 
+      // environment off the runtime stack.
+      this.environment = previous;
+    }
+  }
+
+  @Override
+  public Void visitBlockStmt(Stmt.Block stmt) {
+    executeBlock(stmt.statements, new Environment(environment));
+    return null;
+  }
+
   @Override
   public Void visitExpressionStmt(Stmt.Expression stmt) {                       // When you visit an expression statement, evaluate it
     evaluate(stmt.expression);
