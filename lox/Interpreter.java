@@ -69,6 +69,25 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   }
 
   @Override
+  public Object visitLogicalExpr(Expr.Logical expr) {
+    Object left = evaluate(expr.left);
+
+    if(expr.operator.type == TokenType.OR) {
+      // If the token type is OR, and the left operand is true, then we short
+      // circuit and return true. There is no need to evaluate the other side.
+      if(isTruthy(left)) return left;
+    } else {
+      // If the token type is AND and the left operand is false, we can also
+      // short circuit and return false, since the expression will be false 
+      // no matter what is on the right hand side.
+      if(!isTruthy(left)) return left;
+    }
+
+    // In any other case, we evaluate the right hand side.
+    return evaluate(expr.right);
+  }
+
+  @Override
   public Object visitUnaryExpr(Expr.Unary expr) {
     Object right = evaluate(expr.right);
 
