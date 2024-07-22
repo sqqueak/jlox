@@ -1,6 +1,7 @@
 package lox;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static lox.TokenType.*;
@@ -39,12 +40,64 @@ class Parser {
   }
 
   private Stmt statement() {                                                    // statement -> ifStmt | printStmt | block
+    if(match(FOR)) return forStatement();
     if(match(IF)) return ifStatement();
     if(match(PRINT)) return printStatement();
     if(match(WHILE)) return whileStatement();
     if(match(LEFT_BRACE)) return new Stmt.Block(block());
 
     return expressionStatement();
+  }
+
+  private Stmt forStatement() {
+    consume(LEFT_PAREN, "Expect '(' after 'for'.");
+
+    Stmt initializer;
+    if(match(SEMICOLON)) {
+      // No initialized variable or value.
+      initializer = null;
+    } else if(match(VAR)) {
+      // New variable declared
+      initializer = varDeclaration();
+    } else {
+      initializer = expressionStatement();
+    }
+
+    // Checking and parsing for the break condition.
+    Expr condition = null;
+    if(!check(SEMICOLON)) {
+      condition = expression();
+    }
+    consume(SEMICOLON, "Expect ';' after loop condition.");
+
+    // Checking and parsing for the increment statement.
+    Expr increment = null;
+    if(!check(RIGHT_PAREN)) {
+      increment = expression();
+    }
+    consume(RIGHT_PAREN, "Expect ')' after for clauses.");
+    Stmt body = statement();
+
+    // If there is an increment statement, add it to the list of statements to
+    // run after the body of the loop has executed.
+    if(increment != null) {
+      body = new Stmt.Block( // New body
+        Arrays.asList(
+          body,              // Old body
+          new Stmt.Expression(increment))); // Append increment
+    }
+
+    // If no condition, substitute "true" for infinite loop
+    // Otherwise prepend the condition to the body (old body + increment)
+    if(condition == null) condition = new Expr.Literal(true);
+    body = new Stmt.While(condition, body);
+
+    // If there's an initializer, prepend it.
+    if(initializer != null) {
+      body = new Stmt.Block(Arrays.asList(initializer, body));
+    }
+
+    return body;
   }
 
   private Stmt ifStatement() {
